@@ -8,7 +8,9 @@ import org.itxtech.nemisys.network.protocol.mcpe.*;
 import org.itxtech.nemisys.utils.Binary;
 import org.itxtech.nemisys.utils.BinaryStream;
 import org.itxtech.nemisys.utils.ThreadCache;
+import org.itxtech.nemisys.utils.VarInt;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -29,6 +31,7 @@ public class Network {
     private static final ThreadLocal<byte[]> BUFFER = ThreadLocal.withInitial(() -> new byte[2 * 1024 * 1024]);
 
     private Class<? extends DataPacket>[] packetPool = new Class[256];
+    private Class<? extends DataPacket>[] handleablePacketPool = new Class[256]; // Nemisys handleable (client to proxy)
 
     private Server server;
 
@@ -171,7 +174,14 @@ public class Network {
     }
 
     public void registerPacket(byte id, Class<? extends DataPacket> clazz) {
+        this.registerPacket(id, clazz, false);
+    }
+
+    public void registerPacket(byte id, Class<? extends DataPacket> clazz, boolean handleable) {
         this.packetPool[id & 0xff] = clazz;
+        if (handleable) {
+            this.handleablePacketPool[id & 0xff] = clazz;
+        }
     }
 
     public Server getServer() {
@@ -194,16 +204,23 @@ public class Network {
             int count = 0;
             while (stream.offset < len) {
                 count++;
-                if (count >= 500) {
+                if (count >= 1000) {
                     player.close("Illegal Batch Packet");
                     return;
                 }
                 byte[] buf = stream.getByteArray();
 
-                DataPacket pk;
+                ByteArrayInputStream bais = new ByteArrayInputStream(buf);
+                int header = (int) VarInt.readUnsignedVarInt(bais);
 
-                if ((pk = this.getPacket(buf[0])) != null) {
-                    pk.setBuffer(buf, 1);
+                // | Client ID | Sender ID | Packet ID |
+                // |   2 bits  |   2 bits  |  10 bits  |
+                int packetId = header & 0x3ff;
+
+                DataPacket pk = this.getHandleablePacket(packetId);
+
+                if (pk != null) {
+                    pk.setBuffer(buf, buf.length - bais.available());
 
                     pk.decode();
 
@@ -245,6 +262,18 @@ public class Network {
         return new GenericPacket();
     }
 
+    public DataPacket getHandleablePacket(int id) {
+        Class<? extends DataPacket> clazz = this.handleablePacketPool[id];
+        if (clazz != null) {
+            try {
+                return clazz.newInstance();
+            } catch (Exception e) {
+                Server.getInstance().getLogger().logException(e);
+            }
+        }
+        return new GenericPacket();
+    }
+
     public void sendPacket(String address, int port, byte[] payload) {
         for (AdvancedSourceInterface interfaz : this.advancedInterfaces) {
             interfaz.sendRawPacket(address, port, payload);
@@ -263,10 +292,11 @@ public class Network {
 
     private void registerPackets() {
         this.packetPool = new Class[256];
+        this.handleablePacketPool = new Class[256];
 
-        this.registerPacket(ProtocolInfo.LOGIN_PACKET, LoginPacket.class);
+        this.registerPacket(ProtocolInfo.LOGIN_PACKET, LoginPacket.class, true);
         this.registerPacket(ProtocolInfo.DISCONNECT_PACKET, DisconnectPacket.class);
-        this.registerPacket(ProtocolInfo.BATCH_PACKET, BatchPacket.class);
+        this.registerPacket(ProtocolInfo.BATCH_PACKET, BatchPacket.class, true);
         this.registerPacket(ProtocolInfo.PLAYER_LIST_PACKET, PlayerListPacket.class);
         this.registerPacket(ProtocolInfo.AVAILABLE_COMMANDS_PACKET, AvailableCommandsPacket.class);
         this.registerPacket(ProtocolInfo.ADD_ENTITY_PACKET, AddEntityPacket.class);
@@ -274,8 +304,8 @@ public class Network {
         this.registerPacket(ProtocolInfo.ADD_ITEM_ENTITY_PACKET, AddItemEntityPacket.class);
         this.registerPacket(ProtocolInfo.ADD_PAINTING_PACKET, AddPaintingPacket.class);
         this.registerPacket(ProtocolInfo.REMOVE_ENTITY_PACKET, RemoveEntityPacket.class);
-        this.registerPacket(ProtocolInfo.TEXT_PACKET, TextPacket.class);
-        this.registerPacket(ProtocolInfo.COMMAND_REQUEST_PACKET, CommandRequestPacket.class);
+        this.registerPacket(ProtocolInfo.TEXT_PACKET, TextPacket.class, true);
+        this.registerPacket(ProtocolInfo.COMMAND_REQUEST_PACKET, CommandRequestPacket.class, true);
         this.registerPacket(ProtocolInfo.REMOVE_OBJECTIVE_PACKET, RemoveObjectivePacket.class);
         this.registerPacket(ProtocolInfo.SET_DISPLAY_OBJECTIVE_PACKET, SetDisplayObjectivePacket.class);
         this.registerPacket(ProtocolInfo.SET_SCORE_PACKET, SetScorePacket.class);

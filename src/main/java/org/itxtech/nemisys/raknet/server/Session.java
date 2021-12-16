@@ -24,7 +24,7 @@ public class Session {
     public final static int STATE_CONNECTING_2 = 2;
     public final static int STATE_CONNECTED = 3;
 
-    public final static int MAX_SPLIT_SIZE = 128;
+    public final static int MAX_SPLIT_SIZE = 1000;
     public final static int MAX_SPLIT_COUNT = 4;
 
     public static int WINDOW_SIZE = 2048;
@@ -425,6 +425,7 @@ public class Session {
 
                 PONG_DataPacket pk = new PONG_DataPacket();
                 pk.pingID = dataPacket.pingID;
+                pk.pongID = System.currentTimeMillis();
                 pk.encode();
 
                 EncapsulatedPacket sendPacket = new EncapsulatedPacket();

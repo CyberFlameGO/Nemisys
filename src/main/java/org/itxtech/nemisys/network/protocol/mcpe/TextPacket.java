@@ -1,5 +1,7 @@
 package org.itxtech.nemisys.network.protocol.mcpe;
 
+import org.itxtech.nemisys.utils.BinaryStream;
+
 /**
  * Created on 15-10-13.
  */
@@ -53,11 +55,7 @@ public class TextPacket extends DataPacket {
             case TYPE_POPUP:
             case TYPE_JUKEBOX_POPUP:
                 this.message = this.getString();
-                int count = (int) this.getUnsignedVarInt();
-                this.parameters = new String[count];
-                for (int i = 0; i < count; i++) {
-                    this.parameters[i] = this.getString();
-                }
+                this.parameters = this.getArray(String.class, BinaryStream::getString);
         }
 
         this.xboxUserId = this.getString();

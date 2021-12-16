@@ -10,12 +10,11 @@ import org.itxtech.nemisys.network.protocol.mcpe.types.entity.EntityLink;
 import org.itxtech.nemisys.network.protocol.mcpe.types.item.Item;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Function;
 
 /**
  * author: MagicDroidX
@@ -580,6 +579,16 @@ public class BinaryStream {
         putVarInt(v.x);
         putVarInt(v.y);
         putVarInt(v.z);
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> T[] getArray(Class<T> clazz, Function<BinaryStream, T> function) {
+        ArrayDeque<T> deque = new ArrayDeque<>();
+        int count = (int) this.getUnsignedVarInt();
+        for (int i = 0; i < count; i++) {
+            deque.add(function.apply(this));
+        }
+        return deque.toArray((T[]) Array.newInstance(clazz, 0));
     }
 
     public boolean feof() {

@@ -15,17 +15,20 @@ public class PONG_DataPacket extends Packet {
     }
 
     public long pingID;
+    public long pongID;
 
     @Override
     public void encode() {
         super.encode();
         this.putLong(this.pingID);
+        this.putLong(this.pongID);
     }
 
     @Override
     public void decode() {
         super.decode();
         this.pingID = this.getLong();
+        this.pongID = this.getLong();
     }
 
     public static final class Factory implements Packet.PacketFactory {

@@ -41,6 +41,12 @@ public class PlayerListPacket extends DataPacket {
 
             entries[len] = entry;
         }
+
+        if (type == TYPE_ADD) {
+            for (Entry entry : this.entries) {
+                entry.skin.setTrusted(this.getBoolean());
+            }
+        }
     }
 
     @Override

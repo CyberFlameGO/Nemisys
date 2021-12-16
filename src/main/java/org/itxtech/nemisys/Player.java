@@ -1,7 +1,5 @@
 package org.itxtech.nemisys;
 
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import lombok.Getter;
 import org.itxtech.nemisys.command.Command;
 import org.itxtech.nemisys.command.CommandSender;
@@ -114,7 +112,7 @@ public class Player implements CommandSender {
                     this.uuid = loginPacket.clientUUID;
                     if (this.uuid == null) {
                         this.close(TextFormat.RED + "Please choose another name and try again!");
-                        break;
+                        return;
                     }
                     this.rawUUID = Binary.writeUUID(this.uuid);
                     this.randomClientId = loginPacket.clientId;
